@@ -18,7 +18,7 @@ One upside to the lazy parsing is that it can easily support Typescript or Flow 
 
 ### Exports
 
-Since `export * from '...'` exports create a dependency from this module to the module being exported, these are also included in the list of imports for that file.
+Since `export * from '...'` creates a dependency from this module to the module being exported, these are also included in the list of imports for the file.
 
 ### Dynamic imports
 
@@ -41,7 +41,7 @@ package main
 import (
   "fmt"
   "io/ioutil"
-	"log"
+  "log"
 
   parser "github.com/chrisdothtml/js-import-parser"
 )
