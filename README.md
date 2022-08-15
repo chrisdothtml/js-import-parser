@@ -59,11 +59,11 @@ func main() {
 
 func readFile(filePath string) string {
   content, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		log.Fatal("Error reading file: ", err)
-	}
+  if err != nil {
+    log.Fatal("Error reading file: ", err)
+  }
 
-	return string(content)
+  return string(content)
 }
 ```
 
