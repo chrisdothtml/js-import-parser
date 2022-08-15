@@ -10,11 +10,11 @@ This is not a fully robust JavaScript parser, so it will work best in codebases 
 
 Since this is a lazy parser (as opposed to a full ast parser/analyzer), it's unaware of most of the syntax in JavaScript files, and only concerns itself with the syntax related to module imports. It assumes your files contain valid Javascript (but does not enforce it).
 
-While this allows it to be compact and very fast, it's not perfect and can be tricked. One example is if valid import code exists inside a string within your file, it will be included in the list of imports (see [__fixtures__/main.js](__fixtures__/main.js) for examples of this). Another example is if `require` is reassigned or renamed to something else; these cases will not work as expected (any existence of `require('...')` in your code will be included, regardless of if it actually imports a module at runtime).
+While this allows it to be compact and very fast, it's not perfect and can be tricked. One example is if valid import code exists inside a string within your file, it will be included in the list of imports (see [main.js fixture](__fixtures__/main.js) for examples of this). Another example is if `require` is reassigned or renamed to something else; these cases will not work as expected (any existence of `require('...')` in your code will be included, regardless of if it actually imports a module at runtime).
 
 ### Typescript/Flow
 
-One upside to the lazy parsing is that it can easily support Typescript or Flow files without having to be aware of the full language specs. One thing to note is that `import type ...` imports will be excluded from the list, whereas `import { type Foo, ... }` imports will still be included (as they may also contain non-type imports). See [__fixtures__/types.js](__fixtures__/types.js) for examples of this.
+One upside to the lazy parsing is that it can easily support Typescript or Flow files without having to be aware of the full language specs. One thing to note is that `import type ...` imports will be excluded from the list, whereas `import { type Foo, ... }` imports will still be included (as they may also contain non-type imports). See [types.js fixture](__fixtures__/types.js) for examples of this.
 
 ### Exports
 
