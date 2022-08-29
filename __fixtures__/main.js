@@ -46,7 +46,9 @@ import {foo} from 'INCLUDED-17'
 // but not ones with dynamic paths
 import {foo} from 'EXCLUDED-${bar}'`
 const foo = require('INCLUDED-18')
-const foo = await import('INCLUDED-19')
+const foo = require.resolve('INCLUDED-19')
+const foo = require(require.resolve('INCLUDED-20'))
+const foo = await import('INCLUDED-21')
 
 const renamedRequire = require;
 // sorry, doesn't work

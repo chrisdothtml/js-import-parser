@@ -12,7 +12,7 @@ import (
 func TestGetImportsFromFile(t *testing.T) {
 	result := parseFixture("main.js")
 
-	expectedLength := 19
+	expectedLength := 21
 	actualLength := len(result)
 	if actualLength != expectedLength {
 		t.Errorf("Expected result length of %d, got %d.", expectedLength, actualLength)

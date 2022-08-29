@@ -13,6 +13,7 @@ var chars_from = []rune{'f', 'r', 'o', 'm'}
 var chars_import = []rune{'i', 'm', 'p', 'o', 'r', 't'}
 var chars_of = []rune{'o', 'f'}
 var chars_require = []rune{'r', 'e', 'q', 'u', 'i', 'r', 'e'}
+var chars_requireresolve = []rune{'r', 'e', 'q', 'u', 'i', 'r', 'e', '.', 'r', 'e', 's', 'o', 'l', 'v', 'e'}
 var chars_type = []rune{'t', 'y', 'p', 'e'}
 
 type stateStackItem struct {
@@ -63,7 +64,18 @@ parseLoop:
 			break parseLoop
 
 		case 'r':
-			if requireSrc, ok := l.processDynamicImportOrRequire(chars_require); ok {
+			var requireSrc string
+			var ok bool
+
+			l.pushState()
+			requireSrc, ok = l.processDynamicImportOrRequire(chars_requireresolve)
+
+			if !ok {
+				l.popState()
+				requireSrc, ok = l.processDynamicImportOrRequire(chars_require)
+			}
+
+			if ok {
 				result = append(result, requireSrc)
 			}
 
@@ -99,7 +111,7 @@ parseLoop:
 }
 
 func (l *lexer) processDynamicImportOrRequire(fnChars []rune) (string, bool) {
-	if l.prevChar != -1 && !isWhitespace(l.prevChar) && l.prevChar != ';' && l.prevChar != '=' {
+	if l.prevChar != -1 && !isWhitespace(l.prevChar) && l.prevChar != ';' && l.prevChar != '=' && l.prevChar != '(' {
 		l.step()
 		return "", false
 	}
