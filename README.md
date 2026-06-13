@@ -2,70 +2,75 @@
 
 > A fast parser for analyzing relationships between JavaScript modules
 
-The purpose of this package is to quickly parse a JavaScript file and return a list of modules it imports (other local modules, external dependencies, etc.). For context, it was written to be used in a large monorepo to very quickly determine the specific test files that need to be run given a list of changed files.
+The purpose of this package is to quickly parse JavaScript/TypeScript/Flow files and return the list of modules it imports (other local modules, external dependencies, etc.). For context, it was written to be used in a large monorepo to very quickly determine the specific test files that need to be run given a list of changed files.
 
-This is not a fully robust JavaScript parser, so it will work best in codebases that entirely use static imports/exports and don't rely on bundler magic. See the caveats below for more info on this.
-
-## Caveats
-
-Since this is a lazy parser (as opposed to a full ast parser/analyzer), it's unaware of most of the syntax in JavaScript files, and only concerns itself with the syntax related to module imports. It assumes your files contain valid Javascript (but does not enforce it).
-
-While this allows it to be compact and very fast, it's not perfect and can be tricked. One example is if valid import code exists inside a string within your file, it will be included in the list of imports (see [main.js fixture](__fixtures__/main.js) for examples of this). Another example is if `require` is reassigned or renamed to something else; these cases will not work as expected (any existence of `require('...')` in your code will be included, regardless of if it actually imports a module at runtime).
-
-### Typescript/Flow
-
-One upside to the lazy parsing is that it can easily support Typescript or Flow files without having to be aware of the full language specs. One thing to note is that `import type ...` imports will be excluded from the list, whereas `import { type Foo, ... }` imports will still be included (as they may also contain non-type imports). See [types.js fixture](__fixtures__/types.js) for examples of this.
-
-### Exports
-
-Since `export * from '...'` creates a dependency from this module to the module being exported, these are also included in the list of imports for the file.
-
-### Dynamic imports
-
-Dynamic imports are supports, however, dynamic import *paths* are not.
-
-```js
-// supported
-const component = await import('./component.js');
-// NOT supported
-const component = await import(`./${componentName}.js`);
-```
+It is not a full JavaScript parser. It's a single-pass lexical scanner that tracks just enough context to know when it's looking at real code (as opposed to strings or comments), and only then matches `import`/`export`/`require` syntax. This keeps it small and fast, while very effective for its purpose.
 
 ## Usage
-
-Here is the simplest usage example (when parsing a large number of files you'll likely want to use multi-threading though):
 
 ```go
 package main
 
 import (
-  "fmt"
-  "io/ioutil"
-  "log"
+	"fmt"
+	"os"
 
-  parser "github.com/chrisdothtml/js-import-parser"
+	jsimports "github.com/chrisdothtml/js-import-parser"
 )
 
 func main() {
-  filePath := "/.../foo.js"
-  importedModules := parser.GetImportsFromFile(readFile(filePath), filePath)
+	src, err := os.ReadFile("foo.js")
+	if err != nil {
+		panic(err)
+	}
 
-  // prints list of imports for foo.js
-  fmt.Printf("%s:\n", filePath)
-  for _, importString := range importedModules {
-    fmt.Printf("  %s\n", importString)
-  }
-}
-
-func readFile(filePath string) string {
-  content, err := ioutil.ReadFile(filePath)
-  if err != nil {
-    log.Fatal("Error reading file: ", err)
-  }
-
-  return string(content)
+	result := jsimports.Parse(src)
+	for _, imp := range result.Imports {
+		// e.g. `lodash (static, line 3)`
+		fmt.Printf("%s (%s, line %d)\n", imp.Specifier, imp.Kind, imp.Line)
+	}
+	for _, d := range result.Diagnostics {
+		fmt.Printf("warning: %s on line %d\n", d.Message, d.Line)
+	}
 }
 ```
+
+`Parse` performs no I/O and the returned specifiers are copies, so the source buffer can be reused. When parsing many files, run one `Parse` per goroutine (the scanner has no shared state).
+
+### What gets detected
+
+| Syntax | Kind |
+| --- | --- |
+| `import ... from "x"`, `import "x"` | `static` |
+| `import("x")` | `dynamic` |
+| `require("x")` | `require` |
+| `require.resolve("x")` | `require.resolve` |
+| `export ... from "x"` | `re-export` (it creates a dependency on `x`) |
+| `import type ... from "x"` | `type-static` |
+| `export type { T } from "x"` | `type-re-export` |
+
+Non-literal module paths (`require(someVar)`, `import('./' + name)`, `` import(`./${name}`) ``) can't be statically analyzed. They are skipped and reported as `Diagnostics` instead.
+
+### TypeScript/Flow
+
+Type syntax doesn't need to be fully understood to find imports, so `.ts`/`.tsx`/Flow files work as-is. Type-only imports are reported with their own kinds so the consumer can decide how to treat them:
+
+- `import type ... from 'x'`, `import typeof ... from 'x'`, and `import { type Foo } from 'x'` → `KindTypeStatic`
+- `export type { T } from 'x'` and `export { type T } from 'x'` → `KindTypeReExport`
+- Mixed clauses like `import { type Foo, bar } from 'x'` are recorded **twice** (once as the value kind and once as the type kind), so consumers can filter on either axis.
+- A binding literally named `type` (`import { type } from 'x'`, `import type from 'x'`) is correctly treated as a value import.
+
+See [types.js fixture](__fixtures__/types.js) for the full matrix.
+
+## Caveats
+
+The scanner assumes the input is valid JavaScript; it does not validate syntax. Known limitations:
+
+- **Renamed `require`**: `const r = require; r('x')` is not detected, and any call to an identifier literally named `require` is reported whether or not it's the CommonJS global. (Property accesses like `obj.require('x')` are correctly ignored.)
+- **Regex vs. division** is decided with a one-token lookbehind heuristic rather than full parsing. A misclassification is contained to a single line (string and regex scanning stop at newlines), but a pathological regex could in principle hide an import on the same line.
+- Lone `\r` line endings are not counted in line numbers; `\n` and `\r\n` are.
+
+See [tricky.js fixture](__fixtures__/tricky.js) for the cases the context tracking handles: comment-like text inside strings (`"//"`, globs like `"src/**/*.js"`), quotes inside regexes, imports inside template substitutions, concatenated paths, and more.
 
 ## License
 

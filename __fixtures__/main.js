@@ -39,17 +39,16 @@ export { import1 as name1, import2 as name2, /* …, */ nameN } from "INCLUDED-1
 export { default, /* …, */ } from "INCLUDED-16";
 
 // formatting variations
-const foo = `import {foo} from 'EXCLUDED-1'`
-const foo = `
-// unfortunately imports in strings will be included if there's a preceeding newline
-import {foo} from 'INCLUDED-17'
-// but not ones with dynamic paths
+const str1 = `import {foo} from 'EXCLUDED-1'`
+const str2 = `
+// imports inside template literals are excluded
+import {foo} from 'EXCLUDED-2'
 import {foo} from 'EXCLUDED-${bar}'`
-const foo = require('INCLUDED-18')
-const foo = require.resolve('INCLUDED-19')
-const foo = require(require.resolve('INCLUDED-20'))
-const foo = await import('INCLUDED-21')
+const r1 = require('INCLUDED-17')
+const r2 = require.resolve('INCLUDED-18')
+const r3 = require(require.resolve('INCLUDED-19'))
+const d1 = await import('INCLUDED-20')
 
 const renamedRequire = require;
-// sorry, doesn't work
-const foo = renamedRequire('EXCLUDED-2')
+// renamed/aliased requires can't be detected
+const r4 = renamedRequire('EXCLUDED-3')
